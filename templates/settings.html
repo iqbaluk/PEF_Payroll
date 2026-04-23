@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="ph">
+  <h2>Settings</h2>
+  <p>Configure tax year</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-head"><i class="fas fa-calendar"></i> Tax Year</div>
+      <div style="padding:20px;">
+        <form method="POST">
+          <label class="form-label-sm">Current Tax Year</label>
+          <input type="text" name="tax_year" class="form-control mb-3"
+                 value="{{ company.tax_year }}"
+                 placeholder="e.g. 2025-2026">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">
+            Pakistan FY: July → June<br>
+            e.g. 2025-2026 = Jul 2025 to Jun 2026
+          </div>
+          <button type="submit" class="btn-blue" style="width:100%;">
+            <i class="fas fa-floppy-disk"></i> Save Tax Year
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head navy"><i class="fas fa-building"></i> Company</div>
+      <div style="padding:16px;font-size:13px;">
+        <table style="width:100%;border-collapse:collapse;">
+          {% for lbl, val in [('Name', company.name), ('Region', company.region)] %}
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:7px 0;color:var(--text-soft);width:38%;">{{ lbl }}</td>
+            <td style="padding:7px 0;font-weight:600;">{{ val }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        <p style="font-size:10px;color:var(--text-muted);margin-top:10px;">
+          <i class="fas fa-lock"></i>
+          Fixed by SoftFlow Ltd. Contact Iqbal Ahmed for changes.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

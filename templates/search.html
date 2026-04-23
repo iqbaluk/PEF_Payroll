@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block page_title %}Global Staff Search{% endblock %}
+{% block content %}
+<div class="ph">
+  <h2>Staff Search</h2>
+  <p>Search across all employees in {{ active_year.label }}</p>
+</div>
+
+<div class="card mb-3">
+  <div style="padding:16px 20px;">
+    <form action="/search" method="GET">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="flex:1;position:relative;">
+          <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;"></i>
+          <input type="text" name="q" value="{{ q }}" class="form-control"
+                 style="padding-left:36px;font-size:14px;"
+                 placeholder="Search by name or employee code..."
+                 autofocus>
+        </div>
+        <button type="submit" class="btn-blue" style="white-space:nowrap;">
+          <i class="fas fa-search"></i> Search
+        </button>
+        {% if q %}
+        <a href="/search" class="btn-out" style="white-space:nowrap;">
+          <i class="fas fa-times"></i> Clear
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if q %}
+  {% if results %}
+  <div class="card">
+    <div class="card-head">
+      <i class="fas fa-users"></i> Results for "{{ q }}"
+      <span style="margin-left:auto;font-weight:400;opacity:.8;font-size:11px;">
+        {{ results|length }} employee(s) found
+      </span>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Code</th>
+            <th>Department</th>
+            <th>Designation</th>
+            <th>Latest Month</th>
+            <th class="num">Net Payable</th>
+            <th class="num">Total Payable</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr>
+            <td style="font-weight:600;">{{ r.name }}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);">
+              {{ r.employee_code or '—' }}
+            </td>
+            <td style="font-size:12px;color:var(--text-soft);">{{ r.department or '—' }}</td>
+            <td style="font-size:12px;color:var(--text-soft);">{{ r.designation or '—' }}</td>
+            <td>
+              {% if r.latest %}
+              <span class="b-month">{{ r.latest.month }} {{ r.latest.year }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="num" style="color:var(--success);font-weight:600;">
+              {% if r.latest %}{{ r.latest.net_payable|fmt }}{% else %}—{% endif %}
+            </td>
+            <td class="num" style="font-weight:700;color:var(--navy);">
+              {% if r.latest %}{{ r.latest.total_payable|fmt }}{% else %}—{% endif %}
+            </td>
+            <td>
+              <a href="/employee?name={{ r.name|urlencode }}" class="btn-out btn-sm">
+                <i class="fas fa-user-clock"></i> Account
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:36px;text-align:center;color:var(--text-muted);">
+    <i class="fas fa-user-slash" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px;"></i>
+    <p>No employees found matching "<strong>{{ q }}</strong>"</p>
+  </div>
+  {% endif %}
+{% else %}
+<div class="card" style="padding:36px;text-align:center;color:var(--text-muted);">
+  <i class="fas fa-search" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px;"></i>
+  <p>Type a name or employee code to search.</p>
+</div>
+{% endif %}
+{% endblock %}

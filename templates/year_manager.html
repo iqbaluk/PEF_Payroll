@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Year Manager{% endblock %}
+{% block page_title %}Financial Year Manager{% endblock %}
+{% block content %}
+<div class="ph">
+  <h2>Financial Year Manager</h2>
+  <p>Pakistan FY: July → June &nbsp;·&nbsp; Active: <strong>{{ active.label }}</strong></p>
+</div>
+
+<div class="row g-3">
+
+  <!-- Left: Year Files -->
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-head"><i class="fas fa-database"></i> Financial Year Files</div>
+      {% if all_years %}
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>Year</th><th>Size</th><th>Modified</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for y in all_years %}
+            <tr {{ 'style="background:var(--blue-light);"' if y.label==active.label else '' }}>
+              <td>
+                <div style="font-weight:600;font-size:13px;">{{ y.label }}</div>
+                <div style="font-size:10px;margin-top:2px;">
+                  {% if y.label==active.label %}
+                  <span style="background:var(--blue);color:white;padding:1px 6px;border-radius:3px;font-size:9px;">ACTIVE</span>
+                  {% endif %}
+                  {% if y.is_current %}
+                  <span style="background:var(--success);color:white;padding:1px 6px;border-radius:3px;font-size:9px;margin-left:2px;">CURRENT FY</span>
+                  {% else %}
+                  <span style="background:#757575;color:white;padding:1px 6px;border-radius:3px;font-size:9px;margin-left:2px;">READ ONLY</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-soft);">{{ y.size_kb }} KB</td>
+              <td style="font-size:11px;color:var(--text-soft);">{{ y.modified }}</td>
+              <td>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                  {% if y.label != active.label %}
+                  <form method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="switch">
+                    <input type="hidden" name="fy_label" value="{{ y.label }}">
+                    <button type="submit" class="btn-blue btn-sm">
+                      <i class="fas fa-folder-open"></i> Open
+                    </button>
+                  </form>
+                  {% endif %}
+                  <form method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="backup">
+                    <input type="hidden" name="fy_label" value="{{ y.label }}">
+                    <button type="submit" class="btn-out btn-sm">
+                      <i class="fas fa-download"></i> Backup
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">
+        No year files found. Create your first financial year below.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Create New Year -->
+    <div class="card">
+      <div class="card-head" style="background:var(--success);"><i class="fas fa-plus-circle"></i> Create New Financial Year</div>
+      <div style="padding:18px;">
+        <form method="POST">
+          <input type="hidden" name="action" value="create">
+          <div style="display:flex;gap:10px;align-items:flex-end;">
+            <div style="flex:1;">
+              <label class="form-label-sm">Start Year (July)</label>
+              <select name="start_year" class="form-select">
+                {% for y in years_for_create %}
+                <option value="{{ y }}" {{ 'selected' if y==2026 }}>
+                  {{ get_fy_label(y) }} (Jul {{ y }} – Jun {{ y+1 }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn-blue">
+              <i class="fas fa-plus"></i> Create
+            </button>
+          </div>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+            Creates a fresh empty database for the new year. Previous year data is untouched.
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Backups -->
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-head navy"><i class="fas fa-shield-halved"></i> Restore from Backup</div>
+      <div style="padding:18px;">
+        <form method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="action" value="restore">
+          <label class="form-label-sm">Select Backup ZIP File</label>
+          <input type="file" name="backup_file" class="form-control mb-3"
+                 accept=".zip" required>
+          <button type="submit" class="btn-navy" style="width:100%;"
+                  onclick="return confirm('Restore will overwrite existing data for that year. A backup will be made first. Continue?')">
+            <i class="fas fa-upload"></i> Restore Backup
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><i class="fas fa-clock-rotate-left"></i> Available Backups</div>
+      {% if backups %}
+      <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
+        <table class="tbl">
+          <thead>
+            <tr><th>Backup File</th><th>Size</th><th>Created</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for b in backups %}
+            <tr>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;word-break:break-all;">{{ b.name }}</td>
+              <td style="font-size:11px;color:var(--text-soft);white-space:nowrap;">{{ b.size_kb }} KB</td>
+              <td style="font-size:11px;color:var(--text-soft);white-space:nowrap;">{{ b.created }}</td>
+              <td>
+                <form method="POST" style="display:inline;">
+                  <input type="hidden" name="action" value="download_backup">
+                  <input type="hidden" name="backup_name" value="{{ b.name }}">
+                  <button type="submit" class="btn-out btn-sm">
+                    <i class="fas fa-download"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">
+        No backups yet. Click Backup next to any year to create one.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Pass get_fy_label to template
+</script>
+{% endblock %}

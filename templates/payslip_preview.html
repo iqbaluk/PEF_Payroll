@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Payslip — {{ emp_name }} — {{ slips[0].month }} {{ slips[0].year }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --navy:#0a1628; --blue:#1565c0; --gold:#f9a825;
+      --red:#c62828; --green:#1b7f4f; --accent:#0288d1;
+      --lgrey:#f4f7fb; --mgrey:#d0dce8;
+      --text:#1a2535; --soft:#5a6b82;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'IBM Plex Sans',sans-serif; background:#e8edf4; color:var(--text); }
+
+    /* Action bar */
+    .action-bar {
+      background:var(--navy); color:white; padding:10px 20px;
+      display:flex; align-items:center; justify-content:space-between;
+      position:sticky; top:0; z-index:100; box-shadow:0 2px 10px rgba(0,0,0,.3);
+    }
+    .action-bar-left h3 { font-size:14px; font-weight:600; }
+    .action-bar-left p  { font-size:11px; opacity:.65; margin-top:1px; }
+    .btn-bar { display:flex; gap:8px; align-items:center; }
+    .ab-btn { padding:8px 16px; border-radius:6px; font-size:13px; font-weight:500;
+              cursor:pointer; border:none; display:flex; align-items:center; gap:6px;
+              font-family:'IBM Plex Sans',sans-serif; }
+    .ab-close  { background:rgba(255,255,255,.1); color:white; border:1px solid rgba(255,255,255,.2); }
+    .ab-close:hover { background:rgba(255,255,255,.2); }
+    .ab-print  { background:var(--blue); color:white; }
+    .ab-print:hover { background:#1976d2; }
+    .ab-save   { background:var(--green); color:white; }
+    .ab-save:hover { background:#2e7d32; }
+
+    /* Paper */
+    .paper { max-width:740px; margin:20px auto 40px; background:white;
+             border-radius:8px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.15); }
+
+    /* Header */
+    .ps-hdr { background:var(--navy); color:white; padding:16px 22px;
+              display:flex; justify-content:space-between; align-items:center; }
+    .ps-hdr h1 { font-size:16px; font-weight:700; letter-spacing:.03em; }
+    .ps-hdr .sub { font-size:11px; opacity:.65; margin-top:2px; }
+    .ps-period { text-align:right; }
+    .ps-period .lbl { font-size:9px; opacity:.6; text-transform:uppercase; letter-spacing:.08em; }
+    .ps-period .val { font-size:14px; font-weight:700; color:var(--gold); margin-top:3px; }
+
+    /* Employee info grid */
+    .ps-info {
+      background:var(--lgrey); border-bottom:1px solid var(--mgrey);
+      padding:12px 16px;
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:8px 0;
+    }
+    .info-cell {
+      padding:4px 14px;
+      border-right:1px solid var(--mgrey);
+    }
+    .info-cell:nth-child(3n) { border-right:none; }
+    .info-cell .lbl {
+      font-size:8px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.08em; color:var(--blue);
+      margin-bottom:2px; display:block;
+    }
+    .info-cell .val {
+      font-size:11.5px; font-weight:500; color:var(--text);
+      display:block; line-height:1.3;
+    }
+
+    /* Section title */
+    .sec { background:var(--navy); color:rgba(255,255,255,.9); font-size:11px;
+           font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+           padding:6px 16px; }
+
+    /* ── Tables ── */
+    .ps-tbl {
+      width:100%; border-collapse:collapse;
+      font-size:11.5px; table-layout:fixed;
+    }
+
+    /* Column widths */
+    .ps-tbl col.c-label { width:56%; }
+    .ps-tbl col.c-month { width:22%; }
+    .ps-tbl col.c-ytd   { width:22%; }
+    .ps-tbl col.c-ded   { width:43%; }
+    .ps-tbl col.c-lv    { width:13%; }
+
+    /* Header row */
+    .ps-tbl thead th {
+      background:#112240; color:rgba(255,255,255,.85);
+      font-size:8.5px; font-weight:700; letter-spacing:.06em;
+      text-transform:uppercase;
+      padding:6px 16px;
+      text-align:right;
+    }
+    .ps-tbl thead th:first-child {
+      text-align:left;
+      padding-left:16px;
+    }
+
+    /* Body rows */
+    .ps-tbl tbody tr { border-bottom:1px solid var(--mgrey); }
+    .ps-tbl tbody tr:nth-child(even) { background:var(--lgrey); }
+    .ps-tbl tbody td {
+      font-size:11.5px;
+      padding:6px 16px;
+      vertical-align:middle;
+    }
+
+    /* Footer rows */
+    .ps-tbl tfoot td {
+      padding:7px 16px;
+      font-weight:700;
+      border-top:1.5px solid var(--navy);
+      vertical-align:middle;
+    }
+
+    /* Alignment — applied to td/th directly */
+    .c-left   {
+      text-align:left !important;
+      padding-left:16px !important;
+    }
+    .c-right  {
+      text-align:right !important;
+      padding-right:16px !important;
+      font-family:'IBM Plex Mono',monospace;
+      white-space:nowrap;
+    }
+    .c-center {
+      text-align:center !important;
+      font-family:'IBM Plex Mono',monospace;
+    }
+
+    /* Value colours */
+    .ytd-val  { color:var(--soft); }
+    .red-val  { color:var(--red); }
+    .blue-val { color:var(--blue); font-weight:600; }
+    .grn-val  { color:var(--green); font-weight:700; }
+    .acc-val  { color:var(--accent); }
+    .gold-val { color:#c77800; font-weight:700; }
+
+    /* Footer */
+    .ps-foot { background:var(--lgrey); border-top:1px solid var(--mgrey);
+               text-align:center; padding:10px 16px;
+               font-size:9.5px; color:var(--soft); }
+
+    @media print {
+      body { background:white; }
+      .action-bar { display:none !important; }
+      .save-hint  { display:none !important; }
+      div[style*="position:fixed"] { display:none !important; }
+      * { position:static !important; }
+      .paper { 
+        margin:0; box-shadow:none; border-radius:0;
+        max-width:100%;
+      }
+      @page { 
+        margin:14mm 16mm 14mm 16mm;
+        size:A4; 
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Action Bar -->
+<div class="action-bar">
+  <div class="action-bar-left">
+    <h3>{{ emp_name }}</h3>
+    <p>{{ slips|length }} payslip(s) &nbsp;·&nbsp; {{ company.name }} &nbsp;·&nbsp; Payslip Preview</p>
+  </div>
+  <div class="btn-bar">
+    <button class="ab-btn ab-close" onclick="window.close()">✕ Close</button>
+    <button class="ab-btn ab-print" onclick="window.print()">🖨 Print</button>
+    <button class="ab-btn ab-save"  onclick="savePDF()">💾 Save as PDF</button>
+  </div>
+</div>
+
+<!-- Payslips -->
+{% for slip in slips %}
+{% set emp = slip.emp %}
+{% set ytd = slip.ytd %}
+{% set month = slip.month %}
+{% set year = slip.year %}
+<div class="paper" style="margin-bottom:{% if not loop.last %}30px{% else %}40px{% endif %};">
+
+  <!-- Header -->
+  <div class="ps-hdr" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;">
+    <!-- Left: Company -->
+    <div style="display:flex;align-items:center;gap:10px;">
+      {% if company.has_logo %}
+      <img src="/static/logo.png" style="max-height:44px;max-width:110px;object-fit:contain;">
+      {% endif %}
+      <div>
+        <h1>{{ company.name }}</h1>
+        <div class="sub">{{ company.region or '' }}</div>
+      </div>
+    </div>
+    <!-- Centre: PAYSLIP -->
+    <div style="text-align:center;">
+      <div style="font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">Document</div>
+      <div style="font-size:16px;font-weight:700;letter-spacing:.15em;color:var(--gold);">PAYSLIP</div>
+    </div>
+    <!-- Right: Pay Period -->
+    <div class="ps-period" style="text-align:right;">
+      <div class="lbl">Pay Period</div>
+      <div class="val">{{ month }} {{ year }}</div>
+    </div>
+  </div>
+
+  <!-- Employee Info -->
+  <div class="ps-info">
+    <div class="info-cell">
+      <div class="lbl">Employee Name</div>
+      <div class="val" style="font-size:13px;font-weight:600;">{{ emp.name }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">Employee Code</div>
+      <div class="val">{{ emp.employee_code or '—' }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">Department</div>
+      <div class="val">{{ emp.department or '—' }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">Designation</div>
+      <div class="val">{{ emp.designation or '—' }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">District</div>
+      <div class="val">{{ emp.district or '—' }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">City / Town</div>
+      <div class="val">{{ emp.city or '—' }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">Status</div>
+      <div class="val">{{ emp.status or 'Active' }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">Date of Joining</div>
+      <div class="val">{{ (emp.date_joined or '—').split(' ')[0] }}</div>
+    </div>
+    <div class="info-cell">
+      <div class="lbl">Working Days</div>
+      <div class="val">{{ emp.working_days|int if emp.working_days else '—' }}</div>
+    </div>
+  </div>
+
+  <!-- Salary Breakdown -->
+  <div class="sec">Salary Breakdown</div>
+  <table class="ps-tbl">
+    <colgroup><col class="c-label"><col class="c-month"><col class="c-ytd"></colgroup>
+    <thead>
+      <tr>
+        <th class="c-left">Component</th>
+        <th class="c-right">This Month (PKR)</th>
+        <th class="c-right">YTD (PKR)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="c-left">Basic Pay</td>
+        <td class="c-right">{{ "{:,.0f}".format(emp.basic|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('basic',0)|float) }}</td>
+      </tr>
+      <tr>
+        <td class="c-left">House Rent</td>
+        <td class="c-right">{{ "{:,.0f}".format(emp.house_rent|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('house_rent',0)|float) }}</td>
+      </tr>
+      <tr>
+        <td class="c-left">Utility Allowance</td>
+        <td class="c-right">{{ "{:,.0f}".format(emp.utility|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('utility',0)|float) }}</td>
+      </tr>
+      <tr>
+        <td class="c-left">Medical Allowance</td>
+        <td class="c-right">{{ "{:,.0f}".format(emp.medical|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('medical',0)|float) }}</td>
+      </tr>
+      <tr>
+        <td class="c-left">Travelling Allowance <span style="font-size:9px;color:var(--soft);">(tax free)</span></td>
+        <td class="c-right">{{ "{:,.0f}".format(emp.travelling|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('travelling',0)|float) }}</td>
+      </tr>
+      <tr>
+        <td class="c-left">Accommodation Allowance <span style="font-size:9px;color:var(--soft);">(tax free)</span></td>
+        <td class="c-right">{{ "{:,.0f}".format(emp.accommodation|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('accommodation',0)|float) }}</td>
+      </tr>
+
+    </tbody>
+    <tfoot>
+      <tr style="background:var(--lgrey);">
+        <td class="c-left blue-val">Gross Total Payable</td>
+        <td class="c-right blue-val">{{ "{:,.0f}".format(emp.gross_total|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('gross_total',0)|float) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Deductions -->
+  <div class="sec">Deductions</div>
+  <table class="ps-tbl">
+    <colgroup><col class="c-ded"><col class="c-lv"><col class="c-month"><col class="c-ytd"></colgroup>
+    <thead>
+      <tr>
+        <th class="c-left">Deduction</th>
+        <th class="c-center">Leaves</th>
+        <th class="c-right">This Month (PKR)</th>
+        <th class="c-right">YTD (PKR)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set ded_rows = [
+        ('Income Tax',     '—',                                  emp.income_tax,     ytd.get('income_tax',0)),
+        ('EOBI',           '—',                                  emp.eobi,           ytd.get('eobi',0)),
+        ('Leave Deduction',emp.leaves|int,                       emp.leave_deduction,ytd.get('leave_deduction',0)),
+        ('Late Deduction', '—',                                  emp.late_deduction, ytd.get('late_deduction',0)),
+        ('Other Deductions','—',                                 emp.other_deduction,ytd.get('other_deduction',0)),
+      ] %}
+      {% for lbl, lv, val, yval in ded_rows %}
+      <tr>
+        <td class="c-left">{{ lbl }}</td>
+        <td class="c-center">{{ lv }}</td>
+        <td class="c-right red-val">{{ "{:,.0f}".format(val|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(yval|float) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#ffebee;">
+        <td class="c-left red-val">Total Deductions</td>
+        <td class="c-center">—</td>
+        <td class="c-right red-val">{{ "{:,.0f}".format(emp.total_deduction|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('total_deduction',0)|float) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Net Pay Summary Table -->
+  <div class="sec">Net Pay Summary</div>
+  <table class="ps-tbl">
+    <colgroup><col class="c-label"><col class="c-month"><col class="c-ytd"></colgroup>
+    <thead>
+      <tr>
+        <th class="c-left">Description</th>
+        <th class="c-right">This Month (PKR)</th>
+        <th class="c-right">YTD (PKR)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#e8f5e9;">
+        <td class="c-left grn-val">Net Payable</td>
+        <td class="c-right grn-val" style="font-size:13px;">{{ "{:,.0f}".format(emp.net_payable|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('net_payable',0)|float) }}</td>
+      </tr>
+      <tr>
+        <td class="c-left">Arrear</td>
+        <td class="c-right acc-val">{{ "{:,.0f}".format(emp.arrear|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('arrear',0)|float) }}</td>
+      </tr>
+      <tr>
+        <td class="c-left">Reimbursement</td>
+        <td class="c-right acc-val">{{ "{:,.0f}".format(emp.reimbursement|float) }}</td>
+        <td class="c-right ytd-val">{{ "{:,.0f}".format(ytd.get('reimbursement',0)|float) }}</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr style="background:var(--navy);">
+        <td class="c-left gold-val" style="font-size:13px;padding:9px 10px;">TOTAL PAYABLE</td>
+        <td class="c-right gold-val" style="font-size:14px;padding:9px 10px;">{{ "{:,.0f}".format(emp.total_payable|float) }}</td>
+        <td class="c-right" style="color:rgba(249,168,37,.7);font-family:'IBM Plex Mono',monospace;padding:9px 10px;">{{ "{:,.0f}".format(ytd.get('total_payable',0)|float) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Footer -->
+  <div class="ps-foot">
+    {{ company.name }} &nbsp;·&nbsp; {{ month }} {{ year }}
+    &nbsp;·&nbsp; Computer-generated payslip — no signature required
+  </div>
+
+</div><!-- end paper -->
+{% endfor %}
+
+<script>
+function savePDF() {
+  // Instructions for save to PDF
+  const msg = document.createElement("div");
+  msg.style.cssText = "position:fixed;top:70px;right:20px;background:#1b7f4f;color:white;padding:12px 18px;border-radius:8px;font-size:13px;font-family:sans-serif;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);";
+  msg.innerHTML = "📄 In the print dialog:<br><strong>Destination → Save as PDF</strong>";
+  document.body.appendChild(msg);
+  setTimeout(() => { document.body.removeChild(msg); }, 3000);
+  window.print();
+}
+</script>
+
+</body>
+</html>

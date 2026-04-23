@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Payroll Register{% endblock %}
+{% block page_title %}Payroll Register{% endblock %}
+{% block content %}
+<div class="ph d-flex justify-content-between align-items-start">
+  <div>
+    <h2>Payroll Register</h2>
+    <p>All employees for selected month</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    {% if sel_month %}<span class="b-month" style="font-size:13px;padding:6px 14px;">{{ sel_month }} {{ sel_year }}</span>{% endif %}
+    <button onclick="window.print()" class="btn-out" style="white-space:nowrap;">
+      <i class="fas fa-print"></i> Print
+    </button>
+  </div>
+</div>
+
+<!-- Month selector -->
+<div class="card mb-3">
+  <div style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <label class="form-label-sm" style="margin:0;white-space:nowrap;"><i class="fas fa-calendar"></i> Select Month:</label>
+    <select class="form-select" style="max-width:220px;" id="monthSel">
+      <option value="">— Choose —</option>
+      {% for m in months %}
+      <option value="{{ m.year }}|{{ m.month }}"
+        {{ 'selected' if m.year|string==sel_year and m.month==sel_month }}>
+        {{ m.month }} {{ m.year }} ({{ m.employee_count }} emp)
+      </option>
+      {% endfor %}
+    </select>
+    {% if employees %}
+    <a href="/payslips?year={{ sel_year }}&month={{ sel_month }}" class="btn-blue" style="margin-left:auto;">
+      <i class="fas fa-file-pdf"></i> Generate Payslips
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if employees %}
+<!-- Summary strip -->
+<div style="background:var(--navy);color:white;border-radius:8px;padding:12px 18px;margin-bottom:14px;display:flex;gap:24px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+  <div><span style="opacity:.6;">EMPLOYEES</span><br><strong style="font-size:16px;">{{ employees|length }}</strong></div>
+  <div><span style="opacity:.6;">GROSS TOTAL</span><br><strong>{{ totals.gross_total|fmt }}</strong></div>
+  <div><span style="opacity:.6;">INCOME TAX</span><br><strong>{{ totals.income_tax|fmt }}</strong></div>
+  <div><span style="opacity:.6;">EOBI</span><br><strong>{{ totals.eobi|fmt }}</strong></div>
+  <div><span style="opacity:.6;">LEAVE DED.</span><br><strong>{{ totals.leave_deduction|fmt }}</strong></div>
+  <div><span style="opacity:.6;">TOTAL DED.</span><br><strong>{{ totals.total_deduction|fmt }}</strong></div>
+  <div><span style="opacity:.6;">NET PAYABLE</span><br><strong style="color:var(--gold);font-size:16px;">{{ totals.net_payable|fmt }}</strong></div>
+  <div><span style="opacity:.6;">ARREAR</span><br><strong>{{ totals.arrear|fmt }}</strong></div>
+  <div><span style="opacity:.6;">TOTAL PAYABLE</span><br><strong style="color:var(--gold);font-size:16px;">{{ totals.total_payable|fmt }}</strong></div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-head">
+    <i class="fas fa-table-list"></i> {{ sel_month }} {{ sel_year }} — {{ employees|length }} Employees
+  </div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Code</th><th>Name</th><th>Dept</th><th>Designation</th><th>Status</th>
+          <th class="num">Gross Total</th>
+          <th class="num">I.Tax</th>
+          <th class="num">EOBI</th>
+          <th class="num">Leaves</th>
+          <th class="num">Leave Ded.</th>
+          <th class="num">Late Ded.</th>
+          <th class="num">Other</th>
+          <th class="num">Total Ded.</th>
+          <th class="num">Net Payable</th>
+          <th class="num">Arrear</th>
+          <th class="num">Reimburse</th>
+          <th class="num">Total Payable</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in employees %}
+        <tr>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);">{{ e.employee_code }}</td>
+          <td style="font-weight:500;white-space:nowrap;">{{ e.name }}</td>
+          <td style="font-size:11px;color:var(--text-soft);">{{ e.department }}</td>
+          <td style="font-size:11px;color:var(--text-soft);">{{ e.designation }}</td>
+          <td>
+            {% if e.status and e.status.strip().lower()=='resigned' %}
+            <span class="b-resigned">Resigned</span>
+            {% else %}
+            <span class="b-active">Active</span>
+            {% endif %}
+          </td>
+          <td class="num" style="font-weight:600;">{{ e.gross_total|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ e.income_tax|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ e.eobi|fmt }}</td>
+          <td class="num" style="color:var(--text-soft);">{{ e.leaves|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ e.leave_deduction|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ e.late_deduction|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ e.other_deduction|fmt }}</td>
+          <td class="num" style="color:var(--danger);font-weight:600;">{{ e.total_deduction|fmt }}</td>
+          <td class="num" style="color:var(--success);font-weight:700;">{{ e.net_payable|fmt }}</td>
+          <td class="num" style="color:var(--accent);">{{ e.arrear|fmt }}</td>
+          <td class="num">{{ e.reimbursement|fmt }}</td>
+          <td class="num" style="font-weight:700;color:var(--navy);">{{ e.total_payable|fmt }}</td>
+          <td>
+            <a href="/employee?name={{ e.name|urlencode }}" class="btn-out btn-sm">
+              <i class="fas fa-user"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;opacity:.8;font-size:11px;">TOTALS</td>
+          <td class="num">{{ totals.gross_total|fmt }}</td>
+          <td class="num">{{ totals.income_tax|fmt }}</td>
+          <td class="num">{{ totals.eobi|fmt }}</td>
+          <td class="num">—</td>
+          <td class="num">{{ totals.leave_deduction|fmt }}</td>
+          <td class="num">{{ totals.late_deduction|fmt }}</td>
+          <td class="num">{{ totals.other_deduction|fmt }}</td>
+          <td class="num">{{ totals.total_deduction|fmt }}</td>
+          <td class="num" style="color:var(--gold);">{{ totals.net_payable|fmt }}</td>
+          <td class="num">{{ totals.arrear|fmt }}</td>
+          <td class="num">{{ totals.reimbursement|fmt }}</td>
+          <td class="num" style="color:var(--gold);">{{ totals.total_payable|fmt }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card" style="padding:36px;text-align:center;color:var(--text-muted);">
+  <i class="fas fa-table-list" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px;"></i>
+  <p>Select a month above to view the payroll register.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("monthSel").addEventListener("change", function(){
+  const v = this.value;
+  if(v){ const [y,m]=v.split("|"); window.location="/payroll?year="+y+"&month="+m; }
+});
+</script>
+{% endblock %}

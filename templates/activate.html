@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Activate — PEF Payroll System</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --navy:#0a1628; --blue:#1565c0; --gold:#f9a825; --border:#d0dce8; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'IBM Plex Sans',sans-serif;
+           background:linear-gradient(135deg,#0a1628 0%,#1a3a5c 100%);
+           min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .box { background:white; border-radius:12px; padding:40px;
+           width:100%; max-width:440px; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+    .logo { text-align:center; margin-bottom:28px; }
+    .logo .icon { width:56px;height:56px;background:var(--blue);border-radius:12px;
+                  display:flex;align-items:center;justify-content:center;
+                  margin:0 auto 12px;font-size:24px;color:white; }
+    .logo h1 { font-size:18px;font-weight:700;color:var(--navy); }
+    .logo p  { font-size:12px;color:#5a6b82;margin-top:3px; }
+    .badge-v { display:inline-block;background:var(--blue);color:white;
+               padding:2px 8px;border-radius:4px;font-size:10px;margin-top:4px; }
+    .lbl { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+           color:#5a6b82;margin-bottom:5px;display:block; }
+    .company-box {
+      background:#e3f0fc; border:1.5px solid var(--blue); border-radius:7px;
+      padding:10px 14px; margin-bottom:14px;
+      font-size:14px; font-weight:700; color:var(--navy);
+      font-family:'IBM Plex Mono',monospace; letter-spacing:.04em;
+    }
+    .company-note { font-size:11px;color:#5a6b82;margin-top:4px;font-family:'IBM Plex Sans',sans-serif;font-weight:400; }
+    .inp { width:100%;padding:10px 14px;border:1.5px solid var(--border);
+           border-radius:7px;font-size:13px;font-family:'IBM Plex Mono',monospace;
+           margin-bottom:14px;letter-spacing:.06em;text-transform:uppercase; }
+    .inp:focus { outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,101,192,.12); }
+    .btn-act { width:100%;padding:11px;background:var(--blue);color:white;
+               border:none;border-radius:7px;font-size:14px;font-weight:600;
+               cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:background .15s; }
+    .btn-act:hover { background:#1976d2; }
+    .btn-act:disabled { background:#90a4ae;cursor:not-allowed; }
+    .error { background:#ffebee;color:#c62828;border:1px solid #ef9a9a;
+             border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:14px; }
+    .warn  { background:#fff8e1;color:#c77800;border:1px solid var(--gold);
+             border-radius:6px;padding:10px 14px;font-size:12px;margin-bottom:14px; }
+    .divider { border:none;border-top:1px solid var(--border);margin:20px 0; }
+    .hint { font-size:11px;color:#8fa3bb;margin-top:14px;text-align:center;line-height:1.7; }
+    .softflow { text-align:center;font-size:10px;color:#8fa3bb;margin-top:14px; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div class="icon"><i class="fas fa-key"></i></div>
+    <h1>Software Activation</h1>
+    <p>PEF Payroll System &nbsp;<span class="badge-v">v1.0</span></p>
+  </div>
+
+  {% if error %}
+  <div class="error"><i class="fas fa-circle-exclamation"></i> {{ error }}</div>
+  {% endif %}
+
+  <!-- Company name locked — shown, not editable -->
+  <label class="lbl">Licensed To (Company Name)</label>
+  {% if company_name %}
+  <div class="company-box">
+    {{ company_name }}
+    <div class="company-note">
+      <i class="fas fa-lock" style="font-size:10px;"></i>
+      Your license key must match this company name exactly.
+    </div>
+  </div>
+  {% else %}
+  <div class="warn">
+    <i class="fas fa-triangle-exclamation"></i>
+    Company name not configured. Please set your company name in
+    <strong>company.json</strong> before activating.
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    <label class="lbl">License Key</label>
+    <input type="text" name="key" class="inp"
+           placeholder="SFTF-XXXX-XXXX-XXXX-XXXX"
+           maxlength="24" autocomplete="off" required
+           {{ 'disabled' if not company_name }}>
+
+    <label class="lbl">Activation Seed</label>
+    <input type="text" name="seed" class="inp"
+           placeholder="Provided by SoftFlow Ltd"
+           maxlength="8" autocomplete="off" required
+           {{ 'disabled' if not company_name }}>
+
+    <button type="submit" class="btn-act"
+            {{ 'disabled' if not company_name }}>
+      <i class="fas fa-shield-check"></i> &nbsp; Activate Software
+    </button>
+  </form>
+
+  <hr class="divider">
+  <div class="hint">
+    <i class="fas fa-circle-info"></i>
+    License key is issued per company. Changing the company name
+    will invalidate the license.<br><br>
+    Contact <strong>SoftFlow Ltd</strong> — Iqbal Ahmed<br>
+    to obtain your license key and seed.
+  </div>
+  <div class="softflow">© 2026 SoftFlow Ltd. All Rights Reserved.</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — Berlitz Payroll</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --navy:#0a1628; --blue:#1565c0; --gold:#f9a825; --border:#d0dce8; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'IBM Plex Sans',sans-serif;
+           background:linear-gradient(135deg,#0a1628 0%,#1565c0 100%);
+           min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .box { background:white; border-radius:12px; padding:40px;
+           width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+    .logo { text-align:center; margin-bottom:28px; }
+    .logo .icon { width:56px;height:56px;background:var(--blue);border-radius:12px;
+                  display:flex;align-items:center;justify-content:center;
+                  margin:0 auto 12px;font-size:24px;color:white; }
+    .logo h1 { font-size:20px;font-weight:700;color:var(--navy); }
+    .logo p  { font-size:12px;color:#5a6b82;margin-top:3px; }
+    .lbl { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+           color:#5a6b82;margin-bottom:5px;display:block; }
+    .inp { width:100%;padding:10px 14px;border:1.5px solid var(--border);
+           border-radius:7px;font-size:14px;font-family:'IBM Plex Sans',sans-serif;
+           margin-bottom:16px;transition:border .15s; }
+    .inp:focus { outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,101,192,.12); }
+    .btn { width:100%;padding:11px;background:var(--blue);color:white;
+           border:none;border-radius:7px;font-size:14px;font-weight:600;
+           cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:background .15s; }
+    .btn:hover { background:#1976d2; }
+    .error { background:#ffebee;color:#c62828;border:1px solid #ef9a9a;
+             border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:16px; }
+    .footer { text-align:center;font-size:10px;color:#8fa3bb;margin-top:20px; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div class="icon"><i class="fas fa-file-invoice-dollar"></i></div>
+    <h1>Berlitz</h1>
+    <p>Payroll Management System</p>
+  </div>
+
+  {% if error %}
+  <div class="error"><i class="fas fa-circle-exclamation"></i> {{ error }}</div>
+  {% endif %}
+
+  <form method="POST">
+    <input type="hidden" name="next" value="{{ request.args.get('next','') }}">
+    <label class="lbl">Username</label>
+    <input type="text" name="username" class="inp" placeholder="Enter username" autofocus required>
+    <label class="lbl">Password</label>
+    <input type="password" name="password" class="inp" placeholder="Enter password" required>
+    <button type="submit" class="btn">
+      <i class="fas fa-sign-in-alt"></i> &nbsp; Login
+    </button>
+  </form>
+
+  <div class="footer">
+    © 2026 SoftFlow Ltd · Developed by Iqbal Ahmed
+  </div>
+</div>
+</body>
+</html>

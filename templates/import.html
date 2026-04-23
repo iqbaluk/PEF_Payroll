@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Import Payroll{% endblock %}
+{% block page_title %}Import Payroll{% endblock %}
+{% block content %}
+<div class="ph">
+  <h2>Import Payroll</h2>
+  <p>Upload Excel or CSV — year and month detected automatically from filename</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-head"><i class="fas fa-file-import"></i> Upload Payroll File</div>
+      <div style="padding:22px;">
+        <form method="POST" enctype="multipart/form-data">
+
+          <div class="mb-3">
+            <label class="form-label-sm">Excel / CSV File</label>
+            <input type="file" name="file" id="fileInput" class="form-control"
+                   accept=".xlsx,.xls,.csv" required onchange="autoDetect(this)">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              Name file as <code>2025-04_Apr.xlsx</code> for auto-detection
+            </div>
+          </div>
+
+          <div id="detectBanner" style="display:none;background:var(--blue-light);border:1px solid var(--blue);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;">
+            <i class="fas fa-magic" style="color:var(--blue);"></i>
+            <strong>Auto-detected:</strong> <span id="detectText"></span>
+            <span style="color:var(--text-soft);font-size:11px;margin-left:6px;">— override below if needed</span>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label-sm">Year (override)</label>
+              <select name="year" id="yearSel" class="form-select">
+                <option value="">— Auto —</option>
+                {% for y in years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Month (override)</label>
+              <select name="month" id="monthSel" class="form-select">
+                <option value="">— Auto —</option>
+                {% for m in months_list %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div style="background:var(--off-white);border-radius:6px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:var(--text-soft);">
+            <i class="fas fa-circle-info" style="color:var(--blue);"></i>
+            Year and month are read from the filename automatically. Select above only to override.
+          </div>
+
+          <button type="submit" class="btn-blue" style="width:100%;">
+            <i class="fas fa-database"></i> Import into Database
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {% if result %}
+    <div class="card mt-3">
+      <div class="card-head" style="background:var(--success);">
+        <i class="fas fa-check-circle"></i> Import Complete
+      </div>
+      <div style="padding:18px;">
+        <table style="width:100%;font-size:13px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 0;color:var(--text-soft);">Month Imported</td>
+            <td style="padding:8px 0;font-weight:700;color:var(--blue);">{{ result.month }} {{ result.year }}</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 0;color:var(--text-soft);">Employees Imported</td>
+            <td style="padding:8px 0;font-weight:700;font-size:20px;color:var(--navy);">{{ result.rows_imported }}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:var(--text-soft);">Action</td>
+            <td style="padding:8px 0;">
+              {% if result.overwritten %}
+              <span style="color:var(--gold);font-weight:600;">Previous data replaced</span>
+              {% else %}
+              <span style="color:var(--success);font-weight:600;">New month added</span>
+              {% endif %}
+            </td>
+          </tr>
+        </table>
+        <a href="/payroll?year={{ result.year }}&month={{ result.month }}"
+           class="btn-blue btn-sm" style="margin-top:12px;">
+          <i class="fas fa-eye"></i> View Payroll
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-head navy"><i class="fas fa-database"></i> Months in Database</div>
+      {% if months %}
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>Year</th><th>Month</th><th class="num">Employees</th><th class="num">Net Payable</th><th>Delete</th></tr>
+          </thead>
+          <tbody>
+            {% for m in months %}
+            <tr>
+              <td style="font-family:'IBM Plex Mono',monospace;">{{ m.year }}</td>
+              <td><span class="b-month">{{ m.month }}</span></td>
+              <td class="num">{{ m.employee_count }}</td>
+              <td class="num" style="color:var(--success);font-weight:600;">{{ m.total_net|fmt }}</td>
+              <td>
+                <form method="POST" action="/delete_month"
+                      onsubmit="return confirm('Delete {{ m.month }} {{ m.year }}?\nThis cannot be undone.')">
+                  <input type="hidden" name="year"  value="{{ m.year }}">
+                  <input type="hidden" name="month" value="{{ m.month }}">
+                  <button type="submit" style="background:#ffebee;color:var(--danger);border:1px solid #ef9a9a;border-radius:4px;padding:3px 9px;cursor:pointer;font-size:11px;font-family:'IBM Plex Sans',sans-serif;">
+                    <i class="fas fa-trash"></i> Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">
+        No months imported yet.
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><i class="fas fa-circle-info"></i> File Naming Guide</div>
+      <div style="padding:16px;font-size:12.5px;color:var(--text-soft);line-height:1.9;">
+        <p>Name files in this format for auto-detection:</p>
+        <div style="background:var(--off-white);border-radius:6px;padding:10px 12px;margin:8px 0;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-main);">
+          2025-04_Apr.xlsx → April 2025<br>
+          2025-09_Sep.xlsx → September 2025<br>
+          2026-01_Jan.xlsx → January 2026<br>
+          2026-02_Feb.xlsx → February 2026
+        </div>
+        <p><strong style="color:var(--text-main);">Wrong import?</strong><br>
+        Click <span style="color:var(--danger);font-weight:600;">Delete</span> next to that month, then re-import the correct file.</p>
+        <p style="margin-top:8px;"><strong style="color:var(--text-main);">Re-importing:</strong><br>
+        Upload same month again — old data replaced automatically.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MONTH_MAP = {
+  "jan":"January","feb":"February","mar":"March","apr":"April",
+  "may":"May","jun":"June","jul":"July","aug":"August",
+  "sep":"September","oct":"October","nov":"November","dec":"December",
+  "january":"January","february":"February","march":"March","april":"April",
+  "june":"June","july":"July","august":"August","september":"September",
+  "october":"October","november":"November","december":"December"
+};
+function autoDetect(input) {
+  const fn = input.files[0] ? input.files[0].name : "";
+  const stem = fn.replace(/\.[^.]+$/, "");
+  const parts = stem.split("_");
+  if (parts.length < 2) return;
+  const year  = parts[0].split("-")[0];
+  const month = MONTH_MAP[parts[1].toLowerCase()] || "";
+  if (year && month && year.length === 4) {
+    document.getElementById("yearSel").value  = year;
+    document.getElementById("monthSel").value = month;
+    document.getElementById("detectText").textContent = month + " " + year;
+    document.getElementById("detectBanner").style.display = "block";
+  } else {
+    document.getElementById("detectBanner").style.display = "none";
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<!-- ── Floating Toast Reminder ─────────────────────────────────────── -->
+{% if show_reminder %}
+<div id="toastReminder" style="
+  position:fixed; top:72px; left:50%; transform:translateX(-50%);
+  background:var(--navy); color:white;
+  border-left:5px solid var(--gold);
+  border-radius:8px; padding:16px 22px;
+  display:flex; align-items:center; gap:16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.3);
+  z-index:9999; min-width:500px; max-width:700px;
+  animation:slideDown .4s ease;">
+  <i class="fas fa-triangle-exclamation" style="color:var(--gold);font-size:22px;flex-shrink:0;"></i>
+  <span style="flex:1;font-size:16px;font-weight:600;line-height:1.4;">
+    Reminder: All salary figures are derived from uploaded Excel payroll sheets.
+  </span>
+  <button type="button"
+          onclick="(function(){var t=document.getElementById('toastReminder');if(t){t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(function(){t.remove()},300);}fetch('/dismiss_reminder',{method:'POST'});})()"
+          style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+                 color:white;border-radius:5px;width:30px;height:30px;cursor:pointer;
+                 font-size:18px;line-height:1;flex-shrink:0;
+                 display:flex;align-items:center;justify-content:center;">&#x2715;</button>
+</div>
+<style>
+@keyframes slideDown {
+  from { opacity:0; transform:translateX(-50%) translateY(-20px); }
+  to   { opacity:1; transform:translateX(-50%) translateY(0); }
+}
+</style>
+{% endif %}
+
+<div class="ph">
+  <h2>Welcome back</h2>
+  <p>{{ company.name }} — Payroll Management · Tax Year {{ company.tax_year }}</p>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon si-blue"><i class="fas fa-calendar-check"></i></div>
+      <div>
+        <div class="stat-label">Months Loaded</div>
+        <div class="stat-value">{{ stats.months_loaded }}</div>
+        <div class="stat-sub">of 12 in tax year</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon si-navy"><i class="fas fa-users"></i></div>
+      <div>
+        <div class="stat-label">Total Employees</div>
+        <div class="stat-value">{{ stats.total_employees }}</div>
+        <div class="stat-sub">distinct names in DB</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon si-gold"><i class="fas fa-money-bill-wave"></i></div>
+      <div>
+        <div class="stat-label">Net Payroll</div>
+        <div class="stat-value" style="font-size:15px;">{{ stats.latest_net|fmt }}</div>
+        <div class="stat-sub">{{ stats.latest_month }} (PKR)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon si-green"><i class="fas fa-clock-rotate-left"></i></div>
+      <div>
+        <div class="stat-label">Latest Month</div>
+        <div class="stat-value" style="font-size:15px;">{{ stats.latest_month }}</div>
+        <div class="stat-sub">{{ stats.latest_emp }} employees</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Months table -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-head"><i class="fas fa-database"></i> Payroll Data Loaded</div>
+      {% if months %}
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>#</th><th>Year</th><th>Month</th>
+              <th class="num">Employees</th>
+              <th class="num">Net Payable (PKR)</th>
+              <th class="num">Total Payable (PKR)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in months %}
+            <tr>
+              <td style="color:var(--text-muted);font-family:'IBM Plex Mono',monospace;">{{ loop.index }}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;">{{ m.year }}</td>
+              <td><span class="b-month">{{ m.month }}</span></td>
+              <td class="num">{{ m.employee_count }}</td>
+              <td class="num" style="color:var(--success);font-weight:600;">{{ m.total_net|fmt }}</td>
+              <td class="num" style="font-weight:700;">{{ m.total_pay|fmt }}</td>
+              <td>
+                <a href="/payroll?year={{ m.year }}&month={{ m.month }}" class="btn-out btn-sm">
+                  <i class="fas fa-eye"></i> View
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding:36px;text-align:center;color:var(--text-muted);">
+        <i class="fas fa-database" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px;"></i>
+        <p>No payroll data imported yet.</p>
+        <a href="/import" class="btn-blue" style="margin-top:12px;">
+          <i class="fas fa-file-import"></i> Import First Month
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-head"><i class="fas fa-bolt"></i> Quick Actions</div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:9px;">
+        <a href="/import"   class="btn-blue"><i class="fas fa-file-import"></i> Import Payroll</a>
+        <a href="/payroll"  class="btn-navy"><i class="fas fa-table-list"></i> Payroll Register</a>
+        <a href="/payslips" class="btn-out"><i class="fas fa-file-pdf"></i> Generate Payslips</a>
+        <a href="/employee" class="btn-out"><i class="fas fa-user-clock"></i> Employee Account</a>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><i class="fas fa-circle-info"></i> How to Import</div>
+      <div style="padding:14px;font-size:12px;color:var(--text-soft);line-height:1.8;">
+        <p>1. Click <strong>Import Payroll</strong></p>
+        <p>2. Select <strong>Year</strong> and <strong>Month</strong></p>
+        <p>3. Browse to your <strong>Excel file</strong></p>
+        <p>4. Click <strong>Import</strong></p>
+        <p style="margin-top:8px;">To update a month — just re-import. Existing data is replaced automatically.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

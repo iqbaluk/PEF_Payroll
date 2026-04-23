@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Generate Payslips{% endblock %}
+{% block page_title %}Generate Payslips{% endblock %}
+
+{% block content %}
+<div class="ph">
+  <h2>Generate Payslips</h2>
+  <p>Select options then preview — print or save PDF from the preview window</p>
+</div>
+
+<div class="row g-3">
+
+  <!-- LEFT CARD: Employee + Period + Preview -->
+  <div class="col-md-6">
+    <div class="card" style="height:100%;">
+      <div class="card-head"><i class="fas fa-user"></i> Employee & Period</div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Employee -->
+        <div id="row_employee">
+          <label class="form-label-sm">Employee</label>
+          <select id="empSelect" class="form-select" style="width:100%;">
+            <option value="">— Type to search employee —</option>
+            {% for e in all_employees %}
+            <option value="{{ e.name }}">{{ e.name }}{% if e.employee_code %} ({{ e.employee_code }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Year + Month side by side -->
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;" id="col_year">
+            <label class="form-label-sm">Year</label>
+            <select id="f_year" class="form-select">
+              <option value="">— Year —</option>
+              {% for y in years_avail %}
+              <option value="{{ y }}">{{ y }}-{{ "%02d"|format((y+1) % 100) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="flex:1;" id="col_month">
+            <label class="form-label-sm">Month</label>
+            <select id="f_month" class="form-select">
+              <option value="">— Month —</option>
+              {% for m in months %}
+              <option value="{{ m.month }}">{{ m.month }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Date Range: From / To -->
+        <div style="display:none;gap:12px;" id="col_range">
+          <div style="flex:1;">
+            <label class="form-label-sm">From Month</label>
+            <select id="f_from" class="form-select">
+              <option value="">— From —</option>
+              {% for m in months_list %}
+              <option value="{{ m }}">{{ m }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label class="form-label-sm">To Month</label>
+            <select id="f_to" class="form-select">
+              <option value="">— To —</option>
+              {% for m in months_list %}
+              <option value="{{ m }}">{{ m }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Output format (all employees only) -->
+        <div style="display:none;" id="col_output">
+          <label class="form-label-sm">Output Format</label>
+          <select id="f_output" class="form-select">
+            <option value="separate">ZIP — One PDF per employee</option>
+            <option value="merged">Single merged PDF</option>
+          </select>
+        </div>
+
+        <!-- Spacer pushes button to bottom -->
+        <div style="flex:1;"></div>
+
+        <!-- Preview button -->
+        <button onclick="doPreview()" class="btn-blue" style="width:100%;padding:11px;font-size:14px;">
+          <i class="fas fa-eye"></i> Preview Payslip
+        </button>
+        <!-- Download ZIP — shown only for all_month mode -->
+        <div id="btn_zip" style="display:none;">
+          <button onclick="doDownloadZip()" class="btn-navy" style="width:100%;padding:11px;font-size:14px;">
+            <i class="fas fa-file-zipper"></i> Download ZIP
+          </button>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:-8px;">
+          Print or Save as PDF from the preview window
+        </p>
+
+        <!-- Hidden form for ZIP download -->
+        <form id="f_zip" method="POST" action="/payslips/generate" style="display:none;">
+          <input type="hidden" name="mode"       value="all_month">
+          <input type="hidden" name="year"       id="hf_year">
+          <input type="hidden" name="month"      id="hf_month">
+          <input type="hidden" name="output"     id="hf_output">
+          <input type="hidden" name="action"     value="download">
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT CARD: Mode selector -->
+  <div class="col-md-6">
+    <div class="card" style="height:100%;">
+      <div class="card-head navy"><i class="fas fa-sliders"></i> Select Mode</div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:10px;">
+
+        {% set modes = [
+          ('single_month', 'fas fa-file-pdf',     'Single Employee — One Month',   'Generate a payslip for one employee for a single selected month.'),
+          ('single_range', 'fas fa-calendar-week','Single Employee — Date Range',   'Generate payslips for one employee across a range of months.'),
+          ('single_year',  'fas fa-user-clock',   'Single Employee — Full Year',    'All months for one employee for the full year in one PDF.'),
+          ('all_month',    'fas fa-layer-group',  'All Employees — One Month',      'Generate payslips for all employees for a single selected month.'),
+        ] %}
+
+        {% for mode_id, icon, label, desc in modes %}
+        <label class="mode-card-v" id="lbl_{{ mode_id }}"
+               onclick="switchMode('{{ mode_id }}')">
+          <input type="radio" name="mode_radio" value="{{ mode_id }}"
+                 {{ 'checked' if loop.first }} style="display:none;">
+          <div class="mode-icon"><i class="{{ icon }}"></i></div>
+          <div>
+            <div class="mode-label">{{ label }}</div>
+            <div class="mode-desc">{{ desc }}</div>
+          </div>
+        </label>
+        {% endfor %}
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Info strip -->
+<div class="card mt-3">
+  <div style="padding:12px 18px;display:flex;gap:28px;flex-wrap:wrap;font-size:12px;color:var(--text-soft);">
+    <div><strong style="color:var(--text-main);">Employee Info</strong> · Name · Code · Department · Designation · Status · DOJ</div>
+    <div><strong style="color:var(--text-main);">Salary</strong> · Basic · House Rent · Utility · Medical · Travelling · Accommodation · Gross Total</div>
+    <div><strong style="color:var(--text-main);">Deductions</strong> · Tax · EOBI · Leave · Late · Other</div>
+    <div><strong style="color:var(--text-main);">Net Pay + YTD</strong> · Net · Arrear · Reimbursement · Total · YTD on every figure</div>
+  </div>
+</div>
+
+<style>
+.mode-card-v {
+  display:flex; align-items:flex-start; gap:12px;
+  padding:12px 14px; border:1.5px solid var(--border);
+  border-radius:8px; cursor:pointer;
+  transition:all .15s; user-select:none; background:white;
+}
+.mode-card-v:hover { border-color:var(--blue); background:var(--blue-light); }
+.mode-card-v.active {
+  border-color:var(--blue); background:var(--blue-light);
+  border-width:2px;
+}
+.mode-icon {
+  width:34px; height:34px; border-radius:7px;
+  background:var(--blue-light); color:var(--blue);
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px; flex-shrink:0; margin-top:1px;
+}
+.mode-card-v.active .mode-icon { background:var(--blue); color:white; }
+.mode-label { font-size:13px; font-weight:600; color:var(--text-main); }
+.mode-card-v.active .mode-label { color:var(--blue); }
+.mode-desc  { font-size:11px; color:var(--text-soft); margin-top:2px; line-height:1.4; }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function(){
+  $('#empSelect').select2({
+    placeholder: '— Type to search employee —',
+    allowClear: true,
+    width: '100%',
+  });
+});
+
+let currentMode = 'single_month';
+
+const MONTH_ORDER = {
+  "January":1,"February":2,"March":3,"April":4,"May":5,"June":6,
+  "July":7,"August":8,"September":9,"October":10,"November":11,"December":12
+};
+
+function switchMode(mode) {
+  currentMode = mode;
+  // Update active card
+  document.querySelectorAll('.mode-card-v').forEach(c => c.classList.remove('active'));
+  document.getElementById('lbl_' + mode).classList.add('active');
+
+  const isRange = mode === 'single_range';
+  const isYear  = mode === 'single_year';
+  const isAll   = mode === 'all_month';
+
+  // Show/hide month vs range
+  document.getElementById('col_month').style.display    = (!isRange && !isYear) ? '' : 'none';
+  document.getElementById('col_range').style.display    = isRange ? 'flex' : 'none';
+  document.getElementById('col_output').style.display   = isAll ? '' : 'none';
+  document.getElementById('row_employee').style.display = isAll ? 'none' : '';
+  document.getElementById('btn_zip').style.display      = isAll ? '' : 'none';
+}
+
+function doDownloadZip() {
+  const year   = document.getElementById('f_year').value;
+  const month  = document.getElementById('f_month').value;
+  const output = document.getElementById('f_output').value;
+  if (!year)  { alert('Please select a year.');  return; }
+  if (!month) { alert('Please select a month.'); return; }
+  document.getElementById('hf_year').value   = year;
+  document.getElementById('hf_month').value  = month;
+  document.getElementById('hf_output').value = output || 'separate';
+  document.getElementById('f_zip').submit();
+}
+
+function doPreview() {
+  const year  = document.getElementById('f_year').value;
+  const month = document.getElementById('f_month').value;
+  const from  = document.getElementById('f_from').value;
+  const to    = document.getElementById('f_to').value;
+  const emp   = $('#empSelect').val() || '';
+
+  if (!year) { alert('Please select a year.'); return; }
+
+  if (currentMode === 'single_month' && !month) { alert('Please select a month.'); return; }
+  if (currentMode === 'single_range' && (!from || !to)) { alert('Please select From and To months.'); return; }
+  if (currentMode === 'single_range' && MONTH_ORDER[from] > MONTH_ORDER[to]) {
+    alert('From month must be before To month.'); return;
+  }
+  if (currentMode !== 'all_month' && !emp) { alert('Please select an employee.'); return; }
+  if (currentMode === 'all_month' && !month) { alert('Please select a month.'); return; }
+
+  let url = '/payslips/preview?year=' + year;
+  if (currentMode === 'all_month')    url += '&month=' + month + '&mode=all';
+  else {
+    url += '&emp_name=' + encodeURIComponent(emp);
+    if (currentMode === 'single_month') url += '&month=' + month;
+    if (currentMode === 'single_range') url += '&from_month=' + from + '&to_month=' + to + '&mode=range';
+    if (currentMode === 'single_year')  url += '&mode=year';
+  }
+  window.open(url, '_blank', 'width=860,height=920,scrollbars=yes');
+}
+
+// Init
+switchMode('single_month');
+</script>
+{% endblock %}

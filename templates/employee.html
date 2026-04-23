@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Employee Account{% endblock %}
+{% block page_title %}Employee Account{% endblock %}
+{% block content %}
+<div class="ph d-flex justify-content-between align-items-start">
+  <div>
+    <h2>Employee Account</h2>
+    <p>Full year payment history and YTD totals for any employee</p>
+  </div>
+  <button onclick="window.print()" class="btn-out" style="white-space:nowrap;">
+    <i class="fas fa-print"></i> Print
+  </button>
+</div>
+
+<!-- Selector -->
+<div class="card mb-3">
+  <div style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <label class="form-label-sm" style="margin:0;white-space:nowrap;"><i class="fas fa-user"></i> Select Employee:</label>
+    <select id="empSelect" class="form-select" style="width:320px;">
+      <option value="">— Type to search employee —</option>
+      {% for emp in all_employees %}
+      <option value="{{ emp.name }}" {{ 'selected' if emp.name==sel_name }}>
+        {{ emp.name }}{% if emp.employee_code %} ({{ emp.employee_code }}){% endif %}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+{% if sel_name and emp_data %}
+
+{% set last = emp_data[-1] %}
+{% set last_key = last.year|string + '_' + last.month_order|string %}
+{% set ytd = ytd_map.get(last_key, {}) %}
+
+<!-- YTD Banner -->
+<div style="background:var(--navy);color:white;border-radius:10px;padding:18px 22px;margin-bottom:18px;">
+  <div style="font-size:10px;opacity:.6;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;">Year to Date — {{ last.year }}</div>
+  <div style="font-size:19px;font-weight:700;margin-bottom:14px;">{{ sel_name }}</div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+    <div><div style="opacity:.6;font-size:10px;text-transform:uppercase;margin-bottom:2px;">Months Paid</div><strong style="font-size:18px;">{{ emp_data|length }}</strong></div>
+    <div><div style="opacity:.6;font-size:10px;text-transform:uppercase;margin-bottom:2px;">Gross YTD</div><strong>{{ ytd.get('gross_total',0)|fmt }}</strong></div>
+    <div><div style="opacity:.6;font-size:10px;text-transform:uppercase;margin-bottom:2px;">Tax YTD</div><strong style="color:#ef9a9a;">{{ ytd.get('income_tax',0)|fmt }}</strong></div>
+    <div><div style="opacity:.6;font-size:10px;text-transform:uppercase;margin-bottom:2px;">EOBI YTD</div><strong style="color:#ef9a9a;">{{ ytd.get('eobi',0)|fmt }}</strong></div>
+    <div><div style="opacity:.6;font-size:10px;text-transform:uppercase;margin-bottom:2px;">Total Ded. YTD</div><strong style="color:#ef9a9a;">{{ ytd.get('total_deduction',0)|fmt }}</strong></div>
+    <div><div style="opacity:.6;font-size:10px;text-transform:uppercase;margin-bottom:2px;">Net Payable YTD</div><strong style="color:var(--gold);font-size:18px;">{{ ytd.get('net_payable',0)|fmt }}</strong></div>
+    <div><div style="opacity:.6;font-size:10px;text-transform:uppercase;margin-bottom:2px;">Total Paid YTD</div><strong style="color:var(--gold);font-size:18px;">{{ ytd.get('total_payable',0)|fmt }}</strong></div>
+  </div>
+</div>
+
+<!-- Month by month table -->
+<div class="card">
+  <div class="card-head"><i class="fas fa-calendar-days"></i> Month-by-Month — {{ sel_name }}</div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Year</th><th>Month</th><th>Dept</th><th>Status</th>
+          <th class="num">Gross Total</th>
+          <th class="num">I.Tax</th>
+          <th class="num">EOBI</th>
+          <th class="num">Leaves</th>
+          <th class="num">Leave Ded.</th>
+          <th class="num">Total Ded.</th>
+          <th class="num">Net Payable</th>
+          <th class="num">Arrear</th>
+          <th class="num">Reimburse</th>
+          <th class="num">Total Payable</th>
+          <th class="num">YTD Net</th>
+          <th class="num">YTD Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in emp_data %}
+        {% set key = row.year|string + '_' + row.month_order|string %}
+        {% set y = ytd_map.get(key, {}) %}
+        <tr>
+          <td style="font-family:'IBM Plex Mono',monospace;">{{ row.year }}</td>
+          <td><span class="b-month">{{ row.month }}</span></td>
+          <td style="font-size:11px;color:var(--text-soft);">{{ row.department }}</td>
+          <td>
+            {% if row.status and row.status.strip().lower()=='resigned' %}
+            <span class="b-resigned">Resigned</span>
+            {% else %}
+            <span class="b-active">Active</span>
+            {% endif %}
+          </td>
+          <td class="num" style="font-weight:600;">{{ row.gross_total|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ row.income_tax|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ row.eobi|fmt }}</td>
+          <td class="num" style="color:var(--text-soft);">{{ row.leaves|fmt }}</td>
+          <td class="num" style="color:var(--danger);">{{ row.leave_deduction|fmt }}</td>
+          <td class="num" style="color:var(--danger);font-weight:600;">{{ row.total_deduction|fmt }}</td>
+          <td class="num" style="color:var(--success);font-weight:700;">{{ row.net_payable|fmt }}</td>
+          <td class="num" style="color:var(--accent);">{{ row.arrear|fmt }}</td>
+          <td class="num">{{ row.reimbursement|fmt }}</td>
+          <td class="num" style="font-weight:700;color:var(--navy);">{{ row.total_payable|fmt }}</td>
+          <td class="num" style="color:var(--gold);font-weight:600;">{{ y.get('net_payable',0)|fmt }}</td>
+          <td class="num" style="color:var(--gold);font-weight:700;">{{ y.get('total_payable',0)|fmt }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" style="text-align:right;font-size:11px;opacity:.8;">YEAR TOTALS</td>
+          <td class="num">{{ ytd.get('gross_total',0)|fmt }}</td>
+          <td class="num">{{ ytd.get('income_tax',0)|fmt }}</td>
+          <td class="num">{{ ytd.get('eobi',0)|fmt }}</td>
+          <td class="num">{{ ytd.get('leaves',0)|fmt }}</td>
+          <td class="num">{{ ytd.get('leave_deduction',0)|fmt }}</td>
+          <td class="num">{{ ytd.get('total_deduction',0)|fmt }}</td>
+          <td class="num" style="color:var(--gold);">{{ ytd.get('net_payable',0)|fmt }}</td>
+          <td class="num">{{ ytd.get('arrear',0)|fmt }}</td>
+          <td class="num">{{ ytd.get('reimbursement',0)|fmt }}</td>
+          <td class="num" style="color:var(--gold);">{{ ytd.get('total_payable',0)|fmt }}</td>
+          <td class="num"></td><td class="num"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% elif sel_name %}
+<div class="card" style="padding:32px;text-align:center;color:var(--text-muted);">
+  <p>No data found for <strong>{{ sel_name }}</strong>.</p>
+</div>
+{% else %}
+<div class="card" style="padding:36px;text-align:center;color:var(--text-muted);">
+  <i class="fas fa-user-clock" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px;"></i>
+  <p>Select an employee above to view their full year account.</p>
+</div>
+{% endif %}
+{% block scripts %}
+<script>
+$(document).ready(function(){
+  $('#empSelect').select2({
+    placeholder: '— Type to search employee —',
+    allowClear: true,
+    width: '320px',
+  }).on('change', function(){
+    const name = $(this).val();
+    if(name) window.location = '/employee?name=' + encodeURIComponent(name);
+  });
+});
+</script>
+<style>
+@media print {
+  .sidebar, .topbar, .card:first-child, .ph button { display:none !important; }
+  .main-wrap { margin-left:0 !important; }
+  body { background:white; }
+  @page { margin:10mm; size:A4 landscape; }
+}
+</style>
+{% endblock %}
+{% endblock %}

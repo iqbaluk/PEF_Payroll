@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}EOBI Report{% endblock %}
+{% block page_title %}EOBI Contribution Report{% endblock %}
+{% block content %}
+
+<div class="ph d-flex justify-content-between align-items-start">
+  <div>
+    <h2>EOBI Contribution Report</h2>
+    <p>Employee EOBI contributions for selected month</p>
+  </div>
+  {% if rows %}
+  <button onclick="window.print()" class="btn-out" style="white-space:nowrap;">
+    <i class="fas fa-print"></i> Print
+  </button>
+  {% endif %}
+</div>
+
+<!-- Year + Month selector -->
+<div class="card mb-3">
+  <div style="padding:14px 18px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">
+    <div>
+      <label class="form-label-sm">Year</label>
+      <select id="f_year" class="form-select" style="min-width:110px;">
+        <option value="">— Year —</option>
+        {% for y in years_avail %}
+        <option value="{{ y }}" {{ 'selected' if y|string==sel_year }}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label-sm">Month</label>
+      <select id="f_month" class="form-select" style="min-width:150px;">
+        <option value="">— Month —</option>
+        {% for m in months %}
+        <option value="{{ m.month }}" {{ 'selected' if m.month==sel_month }}>
+          {{ m.month }} {{ m.year }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button onclick="applyFilter()" class="btn-blue">
+      <i class="fas fa-filter"></i> Show
+    </button>
+  </div>
+</div>
+
+{% if rows %}
+<!-- EOBI Table -->
+<div class="card">
+  <div class="card-head">
+    <i class="fas fa-hand-holding-dollar"></i>
+    EOBI Contributions — {{ sel_month }} {{ sel_year }}
+    <span style="margin-left:auto;font-weight:400;opacity:.8;font-size:11px;">
+      {{ rows|length }} employees
+    </span>
+  </div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Employee Name</th>
+          <th>Employee Code</th>
+          <th>Department</th>
+          <th class="num">EOBI (PKR)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td style="color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:11px;">
+            {{ loop.index }}
+          </td>
+          <td style="font-weight:500;">{{ r.name }}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);">
+            {{ r.employee_code or '—' }}
+          </td>
+          <td style="font-size:12px;color:var(--text-soft);">{{ r.department or '—' }}</td>
+          <td class="num" style="font-weight:600;color:var(--blue);">
+            {{ (r.eobi or 0)|fmt }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" style="text-align:right;font-size:11px;opacity:.8;letter-spacing:.05em;">
+            TOTAL — {{ rows|length }} EMPLOYEES
+          </td>
+          <td class="num" style="color:var(--gold);font-size:14px;">
+            {{ (grand_total or 0)|fmt }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% elif sel_year and sel_month %}
+<div class="card" style="padding:32px;text-align:center;color:var(--text-muted);">
+  <i class="fas fa-circle-info" style="font-size:28px;opacity:.3;display:block;margin-bottom:10px;"></i>
+  <p>No EOBI data found for {{ sel_month }} {{ sel_year }}.</p>
+</div>
+
+{% else %}
+<div class="card" style="padding:36px;text-align:center;color:var(--text-muted);">
+  <i class="fas fa-hand-holding-dollar" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px;"></i>
+  <p>Select a year and month above to view the EOBI report.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function applyFilter() {
+  const year  = document.getElementById("f_year").value;
+  const month = document.getElementById("f_month").value;
+  if (!year)  { alert("Please select a year.");  return; }
+  if (!month) { alert("Please select a month."); return; }
+  window.location = `/eobi?year=${year}&month=${encodeURIComponent(month)}`;
+}
+</script>
+<style>
+@media print {
+  .sidebar, .topbar, .card:first-child, .ph button { display:none !important; }
+  .main-wrap { margin-left:0 !important; }
+  body { background:white; }
+  @page { margin:10mm; size:A4 portrait; }
+}
+</style>
+{% endblock %}
