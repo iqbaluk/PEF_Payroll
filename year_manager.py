@@ -6,6 +6,7 @@ Each year has its own DB file: FY2025-26.db
 import json, zipfile, shutil
 from pathlib import Path
 from datetime import datetime
+import re
 
 BASE_DIR     = Path(__file__).resolve().parent
 BACKUPS_DIR  = BASE_DIR / "backups"
@@ -146,7 +147,16 @@ def restore_year(zip_path: str) -> str:
     """Restore a DB from a backup zip. Returns FY label restored."""
     with zipfile.ZipFile(zip_path, "r") as zf:
         names = zf.namelist()
-        db_names = [n for n in names if n.endswith(".db") and n.startswith("FY")]
+        db_names = []
+        for n in names:
+            p = Path(n)
+            if p.name != n:
+                continue
+            if p.suffix.lower() != ".db":
+                continue
+            if not re.fullmatch(r"FY\d{4}-\d{2}\.db", p.name):
+                continue
+            db_names.append(p.name)
         if not db_names:
             raise ValueError("No valid FY database found in zip.")
         db_name = db_names[0]
@@ -154,7 +164,8 @@ def restore_year(zip_path: str) -> str:
         target = BASE_DIR / db_name
         if target.exists():
             backup_year(target.stem)
-        zf.extract(db_name, BASE_DIR)
+        with zf.open(db_name) as src, open(target, "wb") as dst:
+            shutil.copyfileobj(src, dst)
     return Path(db_name).stem
 
 def get_backups() -> list:

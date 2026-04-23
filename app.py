@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file as flask_send_file, session
 from pathlib import Path
 from urllib.parse import quote
+from uuid import uuid4
+from werkzeug.utils import secure_filename
 import os, json
 # Auth removed — single user installation
 from year_manager import (get_active_year, set_active_year, get_all_years,
@@ -33,6 +35,8 @@ MONTHS_LIST = [
     "January","February","March","April","May","June",
     "July","August","September","October","November","December"
 ]
+
+ALLOWED_IMPORT_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 
 
 CONFIG_FILE = BASE_DIR / "config.json"
@@ -142,8 +146,24 @@ def import_page():
         if not f or not f.filename:
             flash("Please choose a file.", "error")
         else:
+            safe_filename = secure_filename(Path(f.filename).name)
+            if not safe_filename:
+                flash("Invalid file name.", "error")
+                years  = list(range(2020, 2031))
+                months = get_months()
+                return render_template("import.html", company=company,
+                                       months_list=MONTHS_LIST, years=years,
+                                       months=months, result=result, detected=detected)
+            ext = Path(safe_filename).suffix.lower()
+            if ext not in ALLOWED_IMPORT_EXTENSIONS:
+                flash("Please upload a valid Excel or CSV file.", "error")
+                years  = list(range(2020, 2031))
+                months = get_months()
+                return render_template("import.html", company=company,
+                                       months_list=MONTHS_LIST, years=years,
+                                       months=months, result=result, detected=detected)
             # Auto-detect from filename if not manually set
-            det_year, det_month = detect_year_month(f.filename)
+            det_year, det_month = detect_year_month(safe_filename)
             if not year:  year  = det_year
             if not month: month = det_month
 
@@ -154,7 +174,7 @@ def import_page():
                     "error"
                 )
             else:
-                tmp_path = UPLOAD_TMP / f.filename
+                tmp_path = UPLOAD_TMP / f"{uuid4().hex}_{safe_filename}"
                 f.save(tmp_path)
                 try:
                     result = import_file(tmp_path, year, month)
@@ -596,8 +616,9 @@ def year_manager():
 
         elif action == "restore":
             f = request.files.get("backup_file")
-            if f and f.filename.endswith(".zip"):
-                tmp = BASE_DIR / "tmp" / f.filename
+            safe_filename = secure_filename(Path(f.filename).name) if f and f.filename else ""
+            if f and safe_filename and safe_filename.lower().endswith(".zip"):
+                tmp = BASE_DIR / "tmp" / f"{uuid4().hex}_{safe_filename}"
                 tmp.parent.mkdir(exist_ok=True)
                 f.save(str(tmp))
                 try:
