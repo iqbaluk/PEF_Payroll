@@ -12,8 +12,9 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
                                  Table, TableStyle, HRFlowable, PageBreak)
 from reportlab.platypus import KeepTogether
+from runtime_paths import DATA_DIR
 
-BASE_DIR       = Path(__file__).resolve().parent
+BASE_DIR       = DATA_DIR
 AGREEMENTS_DIR = BASE_DIR / "agreements"
 AGREEMENTS_DIR.mkdir(exist_ok=True)
 

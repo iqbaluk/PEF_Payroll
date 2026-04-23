@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file as flask_send_file, session
+﻿from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file as flask_send_file, session
 from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 from werkzeug.utils import secure_filename
 import os, json
-# Auth removed — single user installation
+from runtime_paths import APP_BASE_DIR, DATA_DIR
+# Auth removed â€” single user installation
 from year_manager import (get_active_year, set_active_year, get_all_years,
                           create_new_year, backup_year, restore_year,
                           get_backups, is_current_year, get_fy_label)
@@ -20,11 +21,15 @@ from database import (
 )
 from importer import import_file
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=str(APP_BASE_DIR / "templates"),
+    static_folder=str(APP_BASE_DIR / "static"),
+)
 app.secret_key = "pef_payroll_2026_secure"
 app.config["SESSION_TYPE"] = "filesystem"
 
-BASE_DIR   = Path(__file__).resolve().parent
+BASE_DIR   = DATA_DIR
 UPLOAD_TMP = BASE_DIR / "tmp"
 UPLOAD_TMP.mkdir(exist_ok=True)
 
@@ -41,12 +46,12 @@ ALLOWED_IMPORT_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 
 CONFIG_FILE = BASE_DIR / "config.json"
 
-# ── Ensure required folders exist ─────────────────────────────────────────────
+# â”€â”€ Ensure required folders exist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 for _folder in ["backups", "archive", "agreements", "tmp"]:
-    (BASE_DIR / _folder).mkdir(exist_ok=True)
+    (BASE_DIR / _folder).mkdir(parents=True, exist_ok=True)
 
 def get_tax_year():
-    """Load tax year from config.json — changeable without code edit."""
+    """Load tax year from config.json â€” changeable without code edit."""
     if CONFIG_FILE.exists():
         try:
             return json.loads(CONFIG_FILE.read_text()).get("tax_year","2025-2026")
@@ -58,15 +63,15 @@ def save_tax_year(tax_year: str):
     CONFIG_FILE.write_text(json.dumps({"tax_year": tax_year}, indent=2))
 
 def get_company():
-    """Returns company info — name/region from company_config.py, tax_year from config.json."""
+    """Returns company info â€” name/region from company_config.py, tax_year from config.json."""
     info = dict(COMPANY_INFO)
     info["tax_year"] = get_tax_year()
     return info
 
-# ── Runtime state (resets on every app start) ─────────────────────────────────
+# â”€â”€ Runtime state (resets on every app start) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _reminder_shown = False  # Shows once per app start
 
-# ── Context processor — injects into all templates ────────────────────────────
+# â”€â”€ Context processor â€” injects into all templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.context_processor
 def inject_globals():
     return {
@@ -89,7 +94,7 @@ def fmt_filter(v):
     except:
         return "0"
 
-# ── Dashboard ──────────────────────────────────────────────────────────────────
+# â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/")
 def dashboard():
     if not is_eula_accepted():
@@ -103,7 +108,12 @@ def dashboard():
                            stats=stats, months=months, company=company,
                            show_reminder=show_reminder)
 
-# ── Import ─────────────────────────────────────────────────────────────────────
+
+@app.route("/healthz")
+def healthz():
+    return jsonify({"status": "ok", "active_year": get_active_year().get("label", "")})
+
+# â”€â”€ Import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def detect_year_month(filename):
     """
     Auto-detect year and month from filename.
@@ -179,13 +189,13 @@ def import_page():
                 try:
                     result = import_file(tmp_path, year, month)
                     flash(
-                        f"✅ {result['rows_imported']} employees imported for "
+                        f"âœ… {result['rows_imported']} employees imported for "
                         f"{month} {year}" +
                         (" (previous data replaced)" if result["overwritten"] else " (new month added)"),
                         "success"
                     )
                 except Exception as e:
-                    flash(f"❌ Import failed: {str(e)}", "error")
+                    flash(f"âŒ Import failed: {str(e)}", "error")
                 finally:
                     if tmp_path.exists():
                         os.remove(tmp_path)
@@ -204,12 +214,12 @@ def delete_month_route():
     month = request.form.get("month", "")
     if year and month:
         delete_month(int(year), month)
-        flash(f"🗑 {month} {year} data deleted successfully.", "success")
+        flash(f"ðŸ—‘ {month} {year} data deleted successfully.", "success")
     else:
-        flash("Could not delete — year/month missing.", "error")
+        flash("Could not delete â€” year/month missing.", "error")
     return redirect(url_for("import_page"))
 
-# ── Payroll Register ───────────────────────────────────────────────────────────
+# â”€â”€ Payroll Register â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/payroll")
 def payroll():
     company   = get_company()
@@ -233,7 +243,7 @@ def payroll():
                            totals=totals, sel_year=sel_year,
                            sel_month=sel_month)
 
-# ── Employee Account ───────────────────────────────────────────────────────────
+# â”€â”€ Employee Account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/employee")
 def employee():
     company      = get_company()
@@ -256,7 +266,7 @@ def employee():
                            emp_data=emp_data,
                            ytd_map=ytd_map)
 
-# ── Payslips ───────────────────────────────────────────────────────────────────
+# â”€â”€ Payslips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/payslips")
 def payslips():
     company   = get_company()
@@ -275,7 +285,7 @@ def payslips():
 
 @app.route("/payslips/preview")
 def payslip_preview():
-    """HTML preview — single employee, one month / range / full year."""
+    """HTML preview â€” single employee, one month / range / full year."""
     from database import get_payroll, get_employee_ytd, get_employee_history, MONTH_ORDER
     company    = get_company()
     year       = request.args.get("year","")
@@ -287,7 +297,7 @@ def payslip_preview():
 
     slips = []
 
-    # ── All employees — one month ──────────────────────────────────────────
+    # â”€â”€ All employees â€” one month â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if mode == "all":
         if not month:
             flash("Please select a month.", "error")
@@ -301,9 +311,9 @@ def payslip_preview():
             ytd = get_employee_ytd(emp["name"], int(year), mo)
             slips.append({"emp": emp, "ytd": ytd,
                           "month": month, "year": year})
-        emp_name = f"All Employees — {month} {year}"
+        emp_name = f"All Employees â€” {month} {year}"
 
-    # ── Single — date range ────────────────────────────────────────────────
+    # â”€â”€ Single â€” date range â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     elif mode == "range" and from_month and to_month:
         if not emp_name:
             flash("Please select an employee.", "error")
@@ -319,7 +329,7 @@ def payslip_preview():
             slips.append({"emp": row, "ytd": ytd,
                           "month": row["month"], "year": year})
 
-    # ── Single — full year ─────────────────────────────────────────────────
+    # â”€â”€ Single â€” full year â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     elif mode == "year":
         if not emp_name:
             flash("Please select an employee.", "error")
@@ -331,7 +341,7 @@ def payslip_preview():
             slips.append({"emp": row, "ytd": ytd,
                           "month": row["month"], "year": year})
 
-    # ── Single — one month (default) ───────────────────────────────────────
+    # â”€â”€ Single â€” one month (default) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     else:
         if not emp_name or not month:
             flash("Please select employee and month.", "error")
@@ -397,7 +407,7 @@ def generate_payslips():
                 and f_ord <= r["month_order"] <= t_ord]
 
     try:
-        # ── single_month ──────────────────────────────────────────────────
+        # â”€â”€ single_month â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if mode == "single_month":
             employees = get_payroll(int(year), month)
             emp = next((e for e in employees if e["name"] == emp_name), None)
@@ -409,7 +419,7 @@ def generate_payslips():
             pdf = build_payslip_bytes(emp, ytd, company["name"], month, year)
             return send(pdf, f"{safe_filename(emp_name)}_{month}_{year}.pdf")
 
-        # ── single_range ──────────────────────────────────────────────────
+        # â”€â”€ single_range â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         elif mode == "single_range":
             history = get_range_history(emp_name, year, from_month, to_month)
             if not history:
@@ -423,7 +433,7 @@ def generate_payslips():
             merge_pdfs(pdf_list, out)
             return send(out, out.name)
 
-        # ── single_year ───────────────────────────────────────────────────
+        # â”€â”€ single_year â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         elif mode == "single_year":
             history = get_employee_history(emp_name)
             history = [r for r in history if str(r["year"]) == str(year)]
@@ -438,7 +448,7 @@ def generate_payslips():
             merge_pdfs(pdf_list, out)
             return send(out, out.name)
 
-        # ── all_month ─────────────────────────────────────────────────────
+        # â”€â”€ all_month â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         elif mode == "all_month":
             employees = get_payroll(int(year), month)
             if not employees:
@@ -465,7 +475,7 @@ def generate_payslips():
                 return send_file(zip_buf, mimetype="application/zip",
                                as_attachment=True, download_name=zname)
 
-        # ── all_range ─────────────────────────────────────────────────────
+        # â”€â”€ all_range â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         elif mode == "all_range":
             f_ord = MONTH_ORDER.get(from_month.lower(), 1)
             t_ord = MONTH_ORDER.get(to_month.lower(), 12)
@@ -488,7 +498,7 @@ def generate_payslips():
             return send_file(zip_buf, mimetype="application/zip",
                            as_attachment=True, download_name=zname)
 
-        # ── all_year ──────────────────────────────────────────────────────
+        # â”€â”€ all_year â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         elif mode == "all_year":
             all_emp = get_all_employees()
             zip_buf = BytesIO()
@@ -518,10 +528,10 @@ def generate_payslips():
         flash(f"Error generating payslips: {str(e)}", "error")
         return redirect(url_for("payslips"))
 
-# ── Settings ───────────────────────────────────────────────────────────────────
+# â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/settings", methods=["GET","POST"])
 def settings():
-    """Settings — tax year only."""
+    """Settings â€” tax year only."""
     if request.method == "POST":
         ty = request.form.get("tax_year","").strip()
         if ty:
@@ -530,7 +540,7 @@ def settings():
         return redirect(url_for("settings"))
     return render_template("settings.html")
 
-# ── EOBI Report ───────────────────────────────────────────────────────────────
+# â”€â”€ EOBI Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/eobi")
 def eobi_report():
     company     = get_company()
@@ -563,15 +573,15 @@ def eobi_report():
                            sel_year=sel_year, sel_month=sel_month,
                            rows=rows, grand_total=grand_total)
 
-# ── Login / Logout ────────────────────────────────────────────────────────────
+# â”€â”€ Login / Logout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/login")
 def login():
-    # No login required — redirect straight to dashboard
+    # No login required â€” redirect straight to dashboard
     if not is_eula_accepted():
         return redirect(url_for("eula"))
     return redirect(url_for("dashboard"))
 
-# ── Year Manager ───────────────────────────────────────────────────────────────
+# â”€â”€ Year Manager â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/years", methods=["GET","POST"])
 def year_manager():
     company = get_company()
@@ -658,7 +668,7 @@ def year_manager():
                            active=active, all_years=all_years,
                            backups=backups, years_for_create=years_for_create)
 
-# ── Global Search ──────────────────────────────────────────────────────────────
+# â”€â”€ Global Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/search")
 def global_search():
     from database import get_conn
@@ -708,7 +718,7 @@ def eula():
 def about():
     return render_template("about.html", eula_text=EULA_TEXT)
 
-# ── Close App ─────────────────────────────────────────────────────────────────
+# â”€â”€ Close App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/close_app", methods=["POST"])
 def close_app():
     """Shutdown the Flask server gracefully with delay."""
@@ -720,14 +730,14 @@ def close_app():
     threading.Thread(target=shutdown, daemon=True).start()
     return render_template("closing.html")
 
-# ── Dismiss Reminder ──────────────────────────────────────────────────────────
+# â”€â”€ Dismiss Reminder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/dismiss_reminder", methods=["POST"])
 def dismiss_reminder():
     global _reminder_shown
     _reminder_shown = True
     return "", 204
 
-# ── Document Routes ───────────────────────────────────────────────────────────
+# â”€â”€ Document Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.route("/help")
 def help_manual():
     try:
@@ -751,7 +761,7 @@ def service_agreement():
         flash(f"Error generating agreement: {e}", "error")
         return redirect(url_for("about"))
 
-# ── Error handlers ─────────────────────────────────────────────────────────────
+# â”€â”€ Error handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.errorhandler(500)
 def err500(e):
     import traceback
@@ -762,32 +772,30 @@ def err500(e):
 def err404(e):
     return "<h2>Page not found</h2><a href='/'>Back to Dashboard</a>", 404
 
-# ── Main ───────────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    # ── Startup: ensure year system is ready before DB init ──────────────────
-    from year_manager import get_active_year, get_db_path, get_fy_label, current_fy_start
+# â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+def bootstrap_runtime():
     from pathlib import Path as _Path
     import shutil as _shutil
 
-    # Migrate legacy payroll.db → FY format if needed
     legacy = BASE_DIR / "payroll.db"
     active = get_active_year()
-    fy_db  = _Path(active["db_path"])
+    fy_db = _Path(active["db_path"])
     if legacy.exists() and not fy_db.exists():
         fy_db.parent.mkdir(parents=True, exist_ok=True)
         _shutil.copy(str(legacy), str(fy_db))
-        print(f"  Migrated payroll.db → {fy_db.name}")
 
-    # Ensure active DB exists (create empty if new year)
     fy_db.parent.mkdir(parents=True, exist_ok=True)
-
     init_db()
+    return get_active_year()
+
+
+if __name__ == "__main__":
+    active = bootstrap_runtime()
     company = get_company()
-    active  = get_active_year()
-    print("\n" + "="*55)
-    print(f"  PEF Payroll System — {company['name']}")
-    print(f"  Open  : http://127.0.0.1:5001")
+    print("\n" + "=" * 55)
+    print(f"  PEF Payroll System - {company['name']}")
+    print("  Open  : http://127.0.0.1:5001")
     print(f"  Active: {active['label']}")
     print(f"  DB    : {active['db_path']}")
-    print("="*55 + "\n")
+    print("=" * 55 + "\n")
     app.run(debug=False, port=5001)

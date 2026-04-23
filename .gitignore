@@ -16,3 +16,10 @@ payslips/
 tmp/
 archive/
 agreements/
+
+# Build artifacts
+build/
+dist/
+dist-installer/
+tools/
+*.spec

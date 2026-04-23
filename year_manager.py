@@ -7,8 +7,9 @@ import json, zipfile, shutil
 from pathlib import Path
 from datetime import datetime
 import re
+from runtime_paths import DATA_DIR
 
-BASE_DIR     = Path(__file__).resolve().parent
+BASE_DIR     = DATA_DIR
 BACKUPS_DIR  = BASE_DIR / "backups"
 ACTIVE_FILE  = BASE_DIR / "active_year.json"
 

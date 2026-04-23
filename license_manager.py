@@ -2,12 +2,11 @@
 License Manager — SoftFlow Ltd (EULA only)
 """
 import json
-from pathlib import Path
 from datetime import datetime
 from company_config import SOFTWARE_VERSION, DEVELOPER, AUTHOR, COPYRIGHT_YEAR, SOFTWARE_NAME, COMPANY_NAME
+from runtime_paths import path_in_data
 
-BASE_DIR  = Path(__file__).resolve().parent
-EULA_FILE = BASE_DIR / "eula_accepted.json"
+EULA_FILE = path_in_data("eula_accepted.json")
 
 def is_eula_accepted() -> bool:
     if EULA_FILE.exists():

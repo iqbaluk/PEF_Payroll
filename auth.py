@@ -3,12 +3,11 @@ Authentication — simple login system with hashed passwords.
 Users stored in users.json next to app.py.
 """
 import json, hashlib, secrets
-from pathlib import Path
 from functools import wraps
 from flask import session, redirect, url_for, request
+from runtime_paths import path_in_data
 
-BASE_DIR   = Path(__file__).resolve().parent
-USERS_FILE = BASE_DIR / "users.json"
+USERS_FILE = path_in_data("users.json")
 
 # ── Password hashing ───────────────────────────────────────────────────────────
 def hash_password(password: str, salt: str = None) -> tuple:
